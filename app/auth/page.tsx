@@ -3,15 +3,103 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { BarChart2, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { BarChart2, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import toast from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("signin");
+  const [error, setError] = useState("");
+  const [isSignInLoading, setIsSignInLoading] = useState(false);
+  const [isSignUpLoading, setIsSignUpLoading] = useState(false);
+  const router = useRouter();
+
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement> | "google") => {
+    if (e !== "google") e.preventDefault();
+    setIsSignInLoading(true);
+    setError("");
+
+    try {
+      let result;
+      if (e === "google") {
+        // Handle Google Sign-In
+        result = await signIn("google", { redirect: false });
+      } else {
+        // Handle Credentials Sign-In
+        const formData = new FormData(e.currentTarget);
+        const email = formData.get("email") as string;
+        const password = formData.get("password") as string;
+
+        result = await signIn("credentials", {
+          redirect: false,
+          email,
+          password,
+        });
+      }
+
+      if (result?.error) {
+        toast.error(result.error);
+      } else {
+        router.push("/");
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+    } finally {
+      setIsSignInLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const firstName = formData.get("firstName") as string;
+    const lastName = formData.get("lastName") as string;
+    const email = formData.get("email-signup") as string;
+    const password = formData.get("password-signup") as string;
+    const confirmPassword = formData.get("confirm-password") as string;
+
+    // Client-side validation
+    if (!email || !password || !confirmPassword) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setIsSignUpLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName, email, password, topStocks: [] }), // Pass empty topStocks
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Account created successfully! Please sign in.");
+        setActiveTab("signin"); // Switch to the sign-in tab
+      } else {
+        toast.error(data.message || "Something went wrong.");
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+    } finally {
+      setIsSignUpLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col md:flex-row">
@@ -55,6 +143,28 @@ export default function AuthPage() {
                 transition={{ duration: 0.3 }}
               >
                 <TabsContent value="signin" className="mt-6">
+                  <Button
+                    className="w-full bg-gray-100 text-black border border-black hover:bg-gray-200"
+                    onClick={() => handleSignIn("google")}
+                    disabled={isSignInLoading}
+                  >
+                    <img
+                      src="https://www.google.com/favicon.ico"
+                      alt="Google"
+                      className="h-4 w-4 mr-2"
+                    />
+                    Sign In with Google
+                  </Button>
+                  <div className="relative my-4">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or continue with
+                      </span>
+                    </div>
+                  </div>
                   <Card>
                     <CardHeader>
                       <CardTitle>Sign In</CardTitle>
@@ -63,34 +173,47 @@ export default function AuthPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="name@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="password">Password</Label>
-                          <Link
-                            href="#"
-                            className="text-xs text-muted-foreground hover:text-primary"
-                          >
-                            Forgot password?
-                          </Link>
+                      <form onSubmit={handleSignIn}>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            name="email"
+                            type="email"
+                            placeholder="name@example.com"
+                          />
                         </div>
-                        <Input
-                          id="password"
-                          type="password"
-                          placeholder="••••••••"
-                        />
-                      </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="password">Password</Label>
+                            <Link
+                              href="#"
+                              className="text-xs text-muted-foreground hover:text-primary"
+                            >
+                              Forgot password?
+                            </Link>
+                          </div>
+                          <Input
+                            id="password"
+                            name="password"
+                            type="password"
+                            placeholder="••••••••"
+                          />
+                        </div>
+                        {error && (
+                          <p className="text-sm text-red-500">{error}</p>
+                        )}
+                        <CardFooter className="p-0 pt-4">
+                          <Button type="submit" className="w-full" disabled={isSignInLoading}>
+                            {isSignInLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Sign In"
+                            )}
+                          </Button>
+                        </CardFooter>
+                      </form>
                     </CardContent>
-                    <CardFooter>
-                      <Button className="w-full">Sign In</Button>
-                    </CardFooter>
                   </Card>
                 </TabsContent>
 
@@ -103,50 +226,68 @@ export default function AuthPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <form onSubmit={handleSignUp}>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="firstName">First Name</Label>
+                            <Input
+                              id="firstName"
+                              name="firstName"
+                              placeholder="John"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="lastName">Last Name</Label>
+                            <Input
+                              id="lastName"
+                              name="lastName"
+                              placeholder="Doe"
+                            />
+                          </div>
+                        </div>
                         <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name</Label>
+                          <Label htmlFor="email-signup">Email</Label>
                           <Input
-                            id="firstName"
-                            placeholder="John"
+                            id="email-signup"
+                            name="email-signup"
+                            type="email"
+                            placeholder="name@example.com"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name</Label>
+                          <Label htmlFor="password-signup">Password</Label>
                           <Input
-                            id="lastName"
-                            placeholder="Doe"
+                            id="password-signup"
+                            name="password-signup"
+                            type="password"
+                            placeholder="••••••••"
                           />
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email-signup">Email</Label>
-                        <Input
-                          id="email-signup"
-                          type="email"
-                          placeholder="name@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="password-signup">Password</Label>
-                        <Input
-                          id="password-signup"
-                          type="password"
-                          placeholder="••••••••"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirm-password">Confirm Password</Label>
-                        <Input
-                          id="confirm-password"
-                          type="password"
-                          placeholder="••••••••"
-                        />
-                      </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="confirm-password">
+                            Confirm Password
+                          </Label>
+                          <Input
+                            id="confirm-password"
+                            name="confirm-password"
+                            type="password"
+                            placeholder="••••••••"
+                          />
+                        </div>
+                        {error && (
+                          <p className="text-sm text-red-500">{error}</p>
+                        )}
+                        <CardFooter className="p-0 pt-4">
+                          <Button type="submit" className="w-full" disabled={isSignUpLoading}>
+                            {isSignUpLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Create Account"
+                            )}
+                          </Button>
+                        </CardFooter>
+                      </form>
                     </CardContent>
-                    <CardFooter>
-                      <Button className="w-full">Create Account</Button>
-                    </CardFooter>
                   </Card>
                 </TabsContent>
               </motion.div>
@@ -215,6 +356,8 @@ export default function AuthPage() {
           </motion.div>
         </div>
       </div>
+
+      <Toaster />
     </div>
   );
 }

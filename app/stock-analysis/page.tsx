@@ -354,3 +354,294 @@ export default function StockAnalysisPage() {
     </div>
   );
 }
+
+
+
+
+// "use client";
+
+// import { useState, useEffect } from "react";
+// import { motion } from "framer-motion";
+// import { Search, TrendingUp, TrendingDown } from "lucide-react";
+// import { Input } from "@/components/ui/input";
+// import { Button } from "@/components/ui/button";
+// import { Card, CardContent } from "@/components/ui/card";
+// import { useRouter } from "next/navigation";
+// import MarketIndicesSection from "@/components/marketIndicesSection";
+// import Link from "next/link";
+// import axios from "axios";
+
+// // Define types for the data
+// type StockData = {
+//   symbol: string;
+//   name: string;
+//   price: string;
+//   change: string;
+//   open: string;
+//   high: string;
+//   low: string;
+//   close: string;
+//   volume: string;
+//   up: boolean;
+// };
+
+// type AssetType = "stocks" | "forex" | "crypto" | "etf";
+
+// export default function StockAnalysisPage() {
+//   const [searchQuery, setSearchQuery] = useState("");
+//   const [assetType, setAssetType] = useState<AssetType>("stocks");
+//   const [stocks, setStocks] = useState<StockData[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const router = useRouter();
+
+//   const API_KEY = "56bfa2069dbe4f0ea84a4c4dce876b2b"; // Your API key
+
+//   // Fetch data using the time_series endpoint
+//   const fetchStocks = async (type: AssetType) => {
+//     setLoading(true);
+//     try {
+//       const symbols = getSymbolsByType(type);
+//       const requests = symbols.map((symbol) =>
+//         axios.get(`https://api.twelvedata.com/time_series`, {
+//           params: {
+//             symbol,
+//             interval: "1min",
+//             apikey: API_KEY,
+//             outputsize: 1, // Only fetch the latest data point
+//           },
+//         })
+//       );
+
+//       const responses = await Promise.all(requests);
+//       const stockData = responses.map((res, index) => {
+//         const meta = res.data.meta;
+//         const values = res.data.values[0];
+//         return {
+//           symbol: symbols[index],
+//           name: getAssetName(symbols[index], type),
+//           price: values.close,
+//           change: calculateChange(values.open, values.close),
+//           open: values.open,
+//           high: values.high,
+//           low: values.low,
+//           close: values.close,
+//           volume: values.volume,
+//           up: parseFloat(values.close) > parseFloat(values.open),
+//         };
+//       });
+
+//       setStocks(stockData);
+//     } catch (error) {
+//       console.error("Error fetching data:", error);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // Calculate percentage change
+//   const calculateChange = (open: string, close: string): string => {
+//     const openPrice = parseFloat(open);
+//     const closePrice = parseFloat(close);
+//     const change = ((closePrice - openPrice) / openPrice) * 100;
+//     return `${change.toFixed(2)}%`;
+//   };
+
+//   // Get symbols based on asset type
+//   const getSymbolsByType = (type: AssetType): string[] => {
+//     switch (type) {
+//       case "stocks":
+//         return ["AAPL", "TSLA", "AMZN", "MSFT", "GOOGL", "META", "NVDA"];
+//       case "forex":
+//         return ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD"];
+//       case "crypto":
+//         return ["BTC/USD", "ETH/USD", "SOL/USD", "ADA/USD"];
+//       case "etf":
+//         return ["SPY", "QQQ", "VOO", "ARKK"];
+//       default:
+//         return [];
+//     }
+//   };
+
+//   // Get asset name based on symbol and type
+//   const getAssetName = (symbol: string, type: AssetType): string => {
+//     switch (type) {
+//       case "stocks":
+//         return symbol; // Replace with actual names if needed
+//       case "forex":
+//         return symbol;
+//       case "crypto":
+//         return symbol;
+//       case "etf":
+//         return symbol;
+//       default:
+//         return symbol;
+//     }
+//   };
+
+//   // Handle search
+//   const handleSearch = (e: React.FormEvent) => {
+//     e.preventDefault();
+//     if (searchQuery.trim()) {
+//       router.push(`/stock-analysis/${searchQuery.trim()}`);
+//     }
+//   };
+
+//   // Fetch data on component mount and when asset type changes
+//   useEffect(() => {
+//     fetchStocks(assetType);
+//   }, [assetType]);
+
+//   return (
+//     <div className="flex flex-col">
+//       {/* Market Indices */}
+//       <MarketIndicesSection />
+
+//       {/* Asset Type Selector */}
+//       <div className="flex justify-center mt-8 space-x-4">
+//         {(["stocks", "forex", "crypto", "etf"] as AssetType[]).map((type) => (
+//           <Button
+//             key={type}
+//             variant={assetType === type ? "default" : "outline"}
+//             onClick={() => setAssetType(type)}
+//           >
+//             {type.toUpperCase()}
+//           </Button>
+//         ))}
+//       </div>
+
+//       {/* Search Box */}
+//       <section className="w-full py-12 md:py-24 bg-gradient-to-b from-background to-muted/20">
+//         <div className="container px-4 md:px-6">
+//           <motion.div
+//             className="mx-auto max-w-3xl text-center"
+//             initial={{ opacity: 0, y: 20 }}
+//             animate={{ opacity: 1, y: 0 }}
+//             transition={{ duration: 0.5 }}
+//           >
+//             <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+//               {assetType.toUpperCase()} Analysis
+//             </h1>
+//             <p className="mt-4 text-muted-foreground md:text-xl">
+//               Search for any {assetType} to get detailed analysis and insights
+//             </p>
+//           </motion.div>
+//           <motion.div
+//             className="mx-auto mt-8 max-w-2xl"
+//             initial={{ opacity: 0, y: 20 }}
+//             animate={{ opacity: 1, y: 0 }}
+//             transition={{ delay: 0.2, duration: 0.5 }}
+//           >
+//             <form onSubmit={handleSearch} className="relative">
+//               <Input
+//                 type="text"
+//                 placeholder={`Search for a ${assetType} (e.g., ${
+//                   assetType === "stocks"
+//                     ? "AAPL"
+//                     : assetType === "forex"
+//                     ? "EUR/USD"
+//                     : assetType === "crypto"
+//                     ? "BTC/USD"
+//                     : "SPY"
+//                 })`}
+//                 className="h-14 rounded-full pl-6 pr-14 text-lg"
+//                 value={searchQuery}
+//                 onChange={(e) => setSearchQuery(e.target.value)}
+//               />
+//               <Button
+//                 type="submit"
+//                 size="icon"
+//                 className="absolute right-2 top-2 h-10 w-10 rounded-full"
+//               >
+//                 <Search className="h-5 w-5" />
+//               </Button>
+//             </form>
+//           </motion.div>
+//         </div>
+//       </section>
+
+//       {/* Display Fetched Data */}
+//       <section className="w-full py-12 md:py-16 bg-background">
+//         <div className="container px-4 md:px-6">
+//           <div className="mb-8 text-center">
+//             <h2 className="text-3xl font-bold">Today's {assetType.toUpperCase()}</h2>
+//             <p className="mt-2 text-muted-foreground">
+//               Top performing {assetType} in the market today
+//             </p>
+//           </div>
+//           {loading ? (
+//             <div className="text-center">Loading...</div>
+//           ) : (
+//             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+//               {stocks.map((stock, i) => (
+//                 <motion.div
+//                   key={i}
+//                   initial={{ opacity: 0, y: 20 }}
+//                   whileInView={{ opacity: 1, y: 0 }}
+//                   transition={{ delay: i * 0.1, duration: 0.5 }}
+//                   viewport={{ once: true }}
+//                   whileHover={{ y: -5, transition: { duration: 0.2 } }}
+//                 >
+//                   <Link href={`/stock-analysis/${stock.symbol}`}>
+//                     <Card className="overflow-hidden">
+//                       <CardContent className="p-0">
+//                         <div className="p-6">
+//                           <div className="flex items-center justify-between">
+//                             <div>
+//                               <h3 className="font-bold">{stock.name}</h3>
+//                               <p className="text-sm text-muted-foreground">
+//                                 {stock.symbol}
+//                               </p>
+//                             </div>
+//                             <div
+//                               className={`flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+//                                 stock.up
+//                                   ? "bg-green-100 text-green-600"
+//                                   : "bg-red-100 text-red-600"
+//                               } dark:bg-opacity-20`}
+//                             >
+//                               {stock.up ? (
+//                                 <TrendingUp className="mr-1 h-3 w-3" />
+//                               ) : (
+//                                 <TrendingDown className="mr-1 h-3 w-3" />
+//                               )}
+//                               {stock.change}
+//                             </div>
+//                           </div>
+//                           <div className="mt-4">
+//                             <div className="flex justify-between">
+//                               <span className="text-2xl font-bold">
+//                                 {stock.price}
+//                               </span>
+//                             </div>
+//                             <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+//                               <div>
+//                                 <p className="text-muted-foreground">Open</p>
+//                                 <p className="font-medium">{stock.open}</p>
+//                               </div>
+//                               <div>
+//                                 <p className="text-muted-foreground">High</p>
+//                                 <p className="font-medium">{stock.high}</p>
+//                               </div>
+//                               <div>
+//                                 <p className="text-muted-foreground">Low</p>
+//                                 <p className="font-medium">{stock.low}</p>
+//                               </div>
+//                               <div>
+//                                 <p className="text-muted-foreground">Volume</p>
+//                                 <p className="font-medium">{stock.volume}</p>
+//                               </div>
+//                             </div>
+//                           </div>
+//                         </div>
+//                       </CardContent>
+//                     </Card>
+//                   </Link>
+//                 </motion.div>
+//               ))}
+//             </div>
+//           )}
+//         </div>
+//       </section>
+//     </div>
+//   );
+// }

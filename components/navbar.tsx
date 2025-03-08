@@ -5,33 +5,249 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
-import { BarChart3, TrendingUp, LineChart, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { BarChart3, TrendingUp, LineChart, Menu, X, User, LogOut, UserCircle, Mail, MailOpen, FileText, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import toast, { Toaster } from "react-hot-toast";
+import stockMapping from "@/constants/stockMapping";
+
+const topicsOfInterest = [
+  "Minerals",
+  "Technology",
+  "Real Estate",
+  "Politics",
+  "Healthcare",
+  "Energy",
+  "Consumer Goods",
+  "Financial Services",
+  "Telecommunications",
+  "Utilities",
+  "Electronics",
+];
 
 const Navbar = () => {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session } = useSession();
+  const [isMailOpen, setIsMailOpen] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]); // Track selected topics
+  const [searchValue, setSearchValue] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false); // Loading state for the Save button
 
   const navItems = [
     {
       name: "Discover with Us",
       path: "/",
       icon: <TrendingUp className="h-4 w-4 mr-2" />,
+      disabled: false,
     },
     {
       name: "Trend Analysis",
       path: "/trend-analysis",
       icon: <BarChart3 className="h-4 w-4 mr-2" />,
+      disabled: !session,
     },
     {
       name: "Stock Analysis",
       path: "/stock-analysis",
       icon: <LineChart className="h-4 w-4 mr-2" />,
+      disabled: !session,
     },
   ];
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+// Fetch user preferences on page load
+useEffect(() => {
+  if (session?.user?.email) {
+    const fetchUserPreferences = async () => {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const getUserPreferenceEndpoint = process.env.NEXT_PUBLIC_API_GET_USER_PREFERENCE;
+
+        if (!baseUrl || !getUserPreferenceEndpoint) {
+          throw new Error("API configuration is missing.");
+        }
+        const url = `${baseUrl}${getUserPreferenceEndpoint}?email_id=${encodeURIComponent(
+          session.user.email
+        )}`;
+        const response = await fetch(url);
+
+        const data = await response.json();
+
+        console.log("API Response:", data);
+
+        // Handle the response based on its structure
+        if (data.message === "User preference not found") {
+          toast("Hi, user! You can set your stock preferences to get updates via email.", {
+            duration: 6000, // Show for 6 seconds
+          });
+        } else if (data.message && typeof data.message.preference === "string") {
+          // Parse the preferences and set them in state
+          const preferences = JSON.parse(data.message.preference);
+          console.log("Parsed Preferences:", preferences);
+
+          setSelectedStocks(preferences.topStocks || []);
+          setSelectedTopics(preferences.topics || []);
+        } else {
+          toast.error("Invalid preference data received.");
+        }
+      } catch (error) {
+        console.error("Error fetching preferences:", error);
+        toast.error("Something went wrong while fetching preferences.");
+      }
+    };
+
+    fetchUserPreferences();
+  }
+}, [session?.user?.email]); // Run only once on page load
+
+useEffect(() => {
+  if (session) {
+    const timer = setTimeout(() => {
+      setIsMailOpen(true);
+      setShowNotification(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }
+}, [session]);
+
+const handleAddStock = () => {
+  const inputValue = searchValue.trim().toLowerCase();
+
+  if (inputValue === "") {
+    toast.error("Please enter a stock name.");
+    return;
+  }
+
+  if (selectedStocks.length >= 5) {
+    toast.error("You can only select up to 5 stocks.");
+    return;
+  }
+
+  // Find the mapped ticker symbol
+  const ticker = stockMapping[inputValue];
+
+  if (!ticker) {
+    toast.error("Invalid stock name.");
+    return;
+  }
+
+  // Add the mapped ticker to the selected stocks
+  setSelectedStocks([...selectedStocks, ticker]);
+  setSearchValue("");
+};
+
+  const handleRemoveStock = (stock: string) => {
+    setSelectedStocks(selectedStocks.filter((s) => s !== stock));
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+
+    if (value.trim() === "") {
+      setSuggestions([]);
+      return;
+    }
+
+    // Filter the stockMapping keys based on the input value
+    const filteredSuggestions = Object.keys(stockMapping).filter((stock) =>
+      stock.toLowerCase().includes(value.toLowerCase())
+    );
+
+    setSuggestions(filteredSuggestions);
+  };
+  const handleTopicClick = (topic: string) => {
+    if (selectedTopics.includes(topic)) {
+      setSelectedTopics(selectedTopics.filter((t) => t !== topic));
+    } else {
+      if (selectedTopics.length >= 3) {
+        toast.error("You can only select up to 3 topics.");
+        return;
+      }
+      setSelectedTopics([...selectedTopics, topic]);
+    }
+  };
+
+  const handleUpdateStocks = async () => {
+    if (!session?.user?.email) {
+      toast.error("You must be logged in to update your preferences.");
+      return;
+    }
+
+    setIsLoading(true); // Start loading
+
+    try {
+      const payload = {
+        topStocks: selectedStocks,
+        topics: selectedTopics,
+      };
+
+      console.log("payload : ",payload);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const addUserPreferenceEndpoint = process.env.NEXT_PUBLIC_API_ADD_USER_PREFERENCE;
+
+      if (!baseUrl || !addUserPreferenceEndpoint) {
+        throw new Error("API configuration is missing.");
+      }
+
+
+      const url = `${baseUrl}${addUserPreferenceEndpoint}?email_id=${encodeURIComponent(
+        session.user.email
+      )}&preference=${encodeURIComponent(JSON.stringify(payload))}`;
+      const response = await fetch(url,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("data : ",data);
+      if (response.ok) {
+        toast.success("Preferences updated successfully!");
+        setIsDialogOpen(false);
+      } else {
+        toast.error(data.message || "Something went wrong.");
+      }
+    } catch (error) {
+      console.error("Error updating preferences:", error);
+      toast.error("Something went wrong.");
+    } finally {
+      setIsLoading(false); // Stop loading
+    }
   };
 
   return (
@@ -63,27 +279,43 @@ const Navbar = () => {
               const isActive = pathname === item.path;
               return (
                 <li key={item.path}>
-                  <Link href={item.path}>
-                    <motion.div
-                      className={`relative flex items-center px-3 py-2 text-sm font-medium transition-colors ${
-                        isActive
-                          ? "text-primary"
-                          : "text-muted-foreground hover:text-primary"
-                      }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {item.icon}
-                      {item.name}
-                      {isActive && (
-                        <motion.div
-                          className="absolute bottom-0 left-0 h-0.5 w-full bg-primary"
-                          layoutId="navbar-indicator"
-                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                        />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Link
+                            href={item.disabled ? "#" : item.path}
+                            className={item.disabled ? "pointer-events-none" : ""}
+                          >
+                            <motion.div
+                              className={`relative flex items-center px-3 py-2 text-sm font-medium transition-colors ${
+                                isActive
+                                  ? "text-primary"
+                                  : "text-muted-foreground hover:text-primary"
+                              }`}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              {item.icon}
+                              {item.name}
+                              {isActive && (
+                                <motion.div
+                                  className="absolute bottom-0 left-0 h-0.5 w-full bg-primary"
+                                  layoutId="navbar-indicator"
+                                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                                />
+                              )}
+                            </motion.div>
+                          </Link>
+                        </div>
+                      </TooltipTrigger>
+                      {item.disabled && (
+                        <TooltipContent>
+                          <p>Login to access this feature</p>
+                        </TooltipContent>
                       )}
-                    </motion.div>
-                  </Link>
+                    </Tooltip>
+                  </TooltipProvider>
                 </li>
               );
             })}
@@ -91,12 +323,83 @@ const Navbar = () => {
         </nav>
 
         <div className="flex items-center gap-4">
+          {session && (
+            <div className="relative">
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <AnimatePresence>
+                  {isMailOpen ? (
+                    <motion.div
+                      key="open-mail"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <MailOpen className="h-5 w-5" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="closed-mail"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Mail className="h-5 w-5" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Button>
+              {showNotification && (
+                <motion.div
+                  className="absolute -top-0 -right-1 h-2 w-2 bg-blue-500 rounded-full"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
+              {isMailOpen && (
+                <motion.div
+                  className="absolute top-[0.3rem] left-1/2 transform -translate-x-1/2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
+                >
+                  <FileText className="h-4 w-4" />
+                </motion.div>
+              )}
+            </div>
+          )}
           <ThemeToggle />
-          <Link href="/auth">
-            <Button variant="default" size="sm" className="hidden md:inline-flex">
-              Sign In
-            </Button>
-          </Link>
+          {session ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <UserCircle className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsDialogOpen(true)}>
+                  <LineChart className="mr-2 h-4 w-4" />
+                  <span>Fav Stock</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link href="/auth">
+              <Button variant="default" size="sm" className="hidden md:inline-flex">
+                Sign In
+              </Button>
+            </Link>
+          )}
           <button
             onClick={toggleMenu}
             className="md:hidden p-2 text-muted-foreground hover:text-primary"
@@ -105,6 +408,88 @@ const Navbar = () => {
           </button>
         </div>
       </div>
+
+      {/* Dialog for Updating Favorite Stocks */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Your Preferences</DialogTitle>
+            <DialogDescription>
+              Select up to 5 stocks and 3 topics to personalize your experience.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Stock Selection */}
+            <div className="flex gap-2 relative">
+              <Input
+                placeholder="Search for stocks..."
+                value={searchValue}
+                onChange={handleSearchChange}
+              />
+              <Button onClick={handleAddStock}>Add</Button>
+
+              {suggestions.length > 0 && (
+                <div className="absolute top-full left-0 w-full bg-black border border-gray-200 rounded-lg shadow-lg mt-1 z-10">
+                  {suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion}
+                      className="p-2 hover:bg-gray-600 cursor-pointer rounded-lg"
+                      onClick={() => {
+                        setSearchValue(suggestion);
+                        setSuggestions([]);
+                      }}
+                    >
+                      {suggestion} ({stockMapping[suggestion]})
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedStocks.map((stock) => (
+                <div
+                  key={stock}
+                  className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full"
+                >
+                  <span>{stock}</span>
+                  <button onClick={() => handleRemoveStock(stock)}>
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Topic Selection */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Topics of Interest</h3>
+              <div className="flex flex-wrap gap-2">
+                {topicsOfInterest.map((topic) => (
+                  <Button
+                    key={topic}
+                    variant={selectedTopics.includes(topic) ? "default" : "outline"}
+                    onClick={() => handleTopicClick(topic)}
+                    disabled={selectedTopics.length >= 3 && !selectedTopics.includes(topic)}
+                  >
+                    {topic}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateStocks} disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Mobile Menu */}
       <AnimatePresence>
@@ -121,7 +506,10 @@ const Navbar = () => {
                 const isActive = pathname === item.path;
                 return (
                   <li key={item.path}>
-                    <Link href={item.path}>
+                    <Link
+                      href={item.disabled ? "#" : item.path}
+                      className={item.disabled ? "pointer-events-none" : ""}
+                    >
                       <motion.div
                         className={`relative flex items-center px-3 py-2 text-sm font-medium transition-colors ${
                           isActive
@@ -156,6 +544,9 @@ const Navbar = () => {
           </motion.nav>
         )}
       </AnimatePresence>
+
+      {/* Toaster for notifications */}
+      <Toaster />
     </header>
   );
 };

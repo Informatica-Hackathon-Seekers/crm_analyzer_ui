@@ -1,7 +1,8 @@
+// app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { ThemeProvider } from '@/components/theme-provider';
+import { Providers } from '@/components/providers'; // Import Providers
 import { Toaster } from '@/components/ui/toaster';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
@@ -22,12 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <Providers> {/* Use the Providers component */}
           <div className="flex flex-col min-h-screen">
             <Navbar />
             <main className="flex-grow">{children}</main>
@@ -35,7 +31,7 @@ export default function RootLayout({
             <Footer />
           </div>
           <Toaster />
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
