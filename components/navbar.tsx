@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import toast, { Toaster } from "react-hot-toast";
 import stockMapping from "@/constants/stockMapping";
+import { useUserPreferences } from "@/contexts/userPreferenceContext"; // Import the hook
 
 const topicsOfInterest = [
   "Minerals",
@@ -53,11 +54,13 @@ const Navbar = () => {
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]); // Track selected topics
   const [searchValue, setSearchValue] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false); // Loading state for the Save button
+
+  // Use the UserPreferences context
+  const { preferences, setPreferences, isLoading: isPreferencesLoading } = useUserPreferences();
+  const { topStocks: selectedStocks, topics: selectedTopics } = preferences;
 
   const navItems = [
     {
@@ -84,90 +87,51 @@ const Navbar = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-// Fetch user preferences on page load
-useEffect(() => {
-  if (session?.user?.email) {
-    const fetchUserPreferences = async () => {
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const getUserPreferenceEndpoint = process.env.NEXT_PUBLIC_API_GET_USER_PREFERENCE;
+  useEffect(() => {
+    if (session) {
+      const timer = setTimeout(() => {
+        setIsMailOpen(true);
+        setShowNotification(true);
+      }, 5000);
 
-        if (!baseUrl || !getUserPreferenceEndpoint) {
-          throw new Error("API configuration is missing.");
-        }
-        const url = `${baseUrl}${getUserPreferenceEndpoint}?email_id=${encodeURIComponent(
-          session.user.email
-        )}`;
-        const response = await fetch(url);
+      return () => clearTimeout(timer);
+    }
+  }, [session]);
 
-        const data = await response.json();
+  const handleAddStock = () => {
+    const inputValue = searchValue.trim().toLowerCase();
 
-        console.log("API Response:", data);
+    if (inputValue === "") {
+      toast.error("Please enter a stock name.");
+      return;
+    }
 
-        // Handle the response based on its structure
-        if (data.message === "User preference not found") {
-          toast("Hi, user! You can set your stock preferences to get updates via email.", {
-            duration: 6000, // Show for 6 seconds
-          });
-        } else if (data.message && typeof data.message.preference === "string") {
-          // Parse the preferences and set them in state
-          const preferences = JSON.parse(data.message.preference);
-          console.log("Parsed Preferences:", preferences);
+    if (selectedStocks.length >= 5) {
+      toast.error("You can only select up to 5 stocks.");
+      return;
+    }
 
-          setSelectedStocks(preferences.topStocks || []);
-          setSelectedTopics(preferences.topics || []);
-        } else {
-          toast.error("Invalid preference data received.");
-        }
-      } catch (error) {
-        console.error("Error fetching preferences:", error);
-        toast.error("Something went wrong while fetching preferences.");
-      }
-    };
+    // Find the mapped ticker symbol
+    const ticker = stockMapping[inputValue];
 
-    fetchUserPreferences();
-  }
-}, [session?.user?.email]); // Run only once on page load
+    if (!ticker) {
+      toast.error("Invalid stock name.");
+      return;
+    }
 
-useEffect(() => {
-  if (session) {
-    const timer = setTimeout(() => {
-      setIsMailOpen(true);
-      setShowNotification(true);
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }
-}, [session]);
-
-const handleAddStock = () => {
-  const inputValue = searchValue.trim().toLowerCase();
-
-  if (inputValue === "") {
-    toast.error("Please enter a stock name.");
-    return;
-  }
-
-  if (selectedStocks.length >= 5) {
-    toast.error("You can only select up to 5 stocks.");
-    return;
-  }
-
-  // Find the mapped ticker symbol
-  const ticker = stockMapping[inputValue];
-
-  if (!ticker) {
-    toast.error("Invalid stock name.");
-    return;
-  }
-
-  // Add the mapped ticker to the selected stocks
-  setSelectedStocks([...selectedStocks, ticker]);
-  setSearchValue("");
-};
+    // Add the mapped ticker to the selected stocks
+    setPreferences({
+      ...preferences,
+      topStocks: [...selectedStocks, ticker],
+    });
+    setSearchValue("");
+  };
 
   const handleRemoveStock = (stock: string) => {
-    setSelectedStocks(selectedStocks.filter((s) => s !== stock));
+    setPreferences({
+      ...preferences,
+      topStocks: selectedStocks.filter((s) => s !== stock),
+    });
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,15 +150,22 @@ const handleAddStock = () => {
 
     setSuggestions(filteredSuggestions);
   };
+
   const handleTopicClick = (topic: string) => {
     if (selectedTopics.includes(topic)) {
-      setSelectedTopics(selectedTopics.filter((t) => t !== topic));
+      setPreferences({
+        ...preferences,
+        topics: selectedTopics.filter((t) => t !== topic),
+      });
     } else {
       if (selectedTopics.length >= 3) {
         toast.error("You can only select up to 3 topics.");
         return;
       }
-      setSelectedTopics([...selectedTopics, topic]);
+      setPreferences({
+        ...preferences,
+        topics: [...selectedTopics, topic],
+      });
     }
   };
 
@@ -212,7 +183,7 @@ const handleAddStock = () => {
         topics: selectedTopics,
       };
 
-      console.log("payload : ",payload);
+      console.log("payload : ", payload);
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       const addUserPreferenceEndpoint = process.env.NEXT_PUBLIC_API_ADD_USER_PREFERENCE;
 
@@ -220,22 +191,19 @@ const handleAddStock = () => {
         throw new Error("API configuration is missing.");
       }
 
-
       const url = `${baseUrl}${addUserPreferenceEndpoint}?email_id=${encodeURIComponent(
         session.user.email
       )}&preference=${encodeURIComponent(JSON.stringify(payload))}`;
-      const response = await fetch(url,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       const data = await response.json();
 
-      console.log("data : ",data);
+      console.log("data : ", data);
       if (response.ok) {
         toast.success("Preferences updated successfully!");
         setIsDialogOpen(false);
@@ -323,53 +291,6 @@ const handleAddStock = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          {session && (
-            <div className="relative">
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <AnimatePresence>
-                  {isMailOpen ? (
-                    <motion.div
-                      key="open-mail"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <MailOpen className="h-5 w-5" />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="closed-mail"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Mail className="h-5 w-5" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Button>
-              {showNotification && (
-                <motion.div
-                  className="absolute -top-0 -right-1 h-2 w-2 bg-blue-500 rounded-full"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              )}
-              {isMailOpen && (
-                <motion.div
-                  className="absolute top-[0.3rem] left-1/2 transform -translate-x-1/2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
-                >
-                  <FileText className="h-4 w-4" />
-                </motion.div>
-              )}
-            </div>
-          )}
           <ThemeToggle />
           {session ? (
             <DropdownMenu>
@@ -429,7 +350,7 @@ const handleAddStock = () => {
               <Button onClick={handleAddStock}>Add</Button>
 
               {suggestions.length > 0 && (
-                <div className="absolute top-full left-0 w-full bg-black border border-gray-200 rounded-lg shadow-lg mt-1 z-10">
+                <div className="absolute top-full left-0 w-full bg-black border border-gray-200 rounded-lg shadow-lg mt-1 z-10 max-h-60 overflow-y-auto scrollbar">
                   {suggestions.map((suggestion) => (
                     <div
                       key={suggestion}

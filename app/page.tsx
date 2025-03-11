@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, TrendingUp, BarChart, LineChart, FileUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useUserPreferences } from "@/contexts/userPreferenceContext";
 
 // Define types for the API response
 type Article = {
@@ -138,7 +139,13 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [visibleCards, setVisibleCards] = useState(6); // Initially show 6 cards (2 rows)
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const { preferences } = useUserPreferences(); // Access user preferences
   const [selectedTopic, setSelectedTopic] = useState<string>("All"); // Track selected topic
+
+  const userPreferredTopics = preferences.topics || [];
+
+  // Combine "All" with user's preferred topics
+  const allTopics = ["All", ...userPreferredTopics];
 
   const fetchData = async (topic: string = "All") => {
     setLoading(true);
@@ -146,36 +153,47 @@ export default function Home() {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       const endpoint = process.env.NEXT_PUBLIC_API_GET_LATEST_NEWS_SNIPPETS;
-    
+  
       if (!baseUrl || !endpoint) {
         throw new Error("API configuration is missing.");
       }
-    
+  
       const url =
         topic === "All"
           ? `${baseUrl}${endpoint}`
           : `${baseUrl}${endpoint}/?topic=${topic}`;
-    
+  
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
-    
+  
       const data = await response.json();
       console.log("API Response:", data);
-    
-      // Transform API data into trendCards format
+  
+      // Use a Set to track unique titles
+      const uniqueTitles = new Set<string>();
+  
+      // Transform API data into trendCards format, filtering out duplicates
       const transformedData = data.message.flatMap((source: Source) =>
-        source.articles.map((article: Article) => ({
-          title: article.title,
-          description: article.summary,
-          icon: topicIcons[article.topic] || topicIcons["default"],
-          image: topicImages[article.topic] || topicImages["default"],
-          link: article.link,
-          topic: article.topic,
-        }))
+        source.articles
+          .filter((article: Article) => {
+            if (uniqueTitles.has(article.title)) {
+              return false; // Skip if title is already in the Set
+            }
+            uniqueTitles.add(article.title); // Add title to the Set
+            return true;
+          })
+          .map((article: Article) => ({
+            title: article.title,
+            description: article.summary,
+            icon: topicIcons[article.topic] || topicIcons["default"],
+            image: topicImages[article.topic] || topicImages["default"],
+            link: article.link,
+            topic: article.topic,
+          }))
       );
-    
+  
       setApiData(transformedData);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -340,7 +358,6 @@ export default function Home() {
                   {/* Card Content */}
                   <CardHeader>
                     <div className="flex items-center gap-2">
-                      {card.icon}
                       <CardTitle>{card.title}</CardTitle>
                     </div>
                     <CardDescription>{card.description}</CardDescription>

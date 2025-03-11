@@ -19,456 +19,190 @@ import {
   Bar,
 } from "recharts";
 
-// Mock data for stock details
-const getStockData = (symbol: string) => {
-  // This would be replaced with actual API calls in a real application
-  const stockInfo = {
-    AAPL: {
-      name: "Apple Inc.",
-      price: 173.75,
-      change: 1.38,
-      changePercent: 0.8,
-      marketCap: "2.73T",
-      peRatio: 28.7,
-      dividend: 0.92,
-      volume: "58.3M",
-      avgVolume: "62.1M",
-      high: 174.30,
-      low: 171.96,
-      open: 172.30,
-      prevClose: 172.37,
-      yearHigh: 198.23,
-      yearLow: 124.17,
-      up: true,
-    },
-    TSLA: {
-      name: "Tesla Inc.",
-      price: 248.50,
-      change: 5.59,
-      changePercent: 2.3,
-      marketCap: "788.2B",
-      peRatio: 70.3,
-      dividend: 0,
-      volume: "118.5M",
-      avgVolume: "103.7M",
-      high: 249.55,
-      low: 242.11,
-      open: 243.76,
-      prevClose: 242.91,
-      yearHigh: 299.29,
-      yearLow: 101.81,
-      up: true,
-    },
-    AMZN: {
-      name: "Amazon.com Inc.",
-      price: 134.68,
-      change: -0.67,
-      changePercent: -0.5,
-      marketCap: "1.38T",
-      peRatio: 104.4,
-      dividend: 0,
-      volume: "35.7M",
-      avgVolume: "43.2M",
-      high: 136.65,
-      low: 133.38,
-      open: 135.02,
-      prevClose: 135.35,
-      yearHigh: 146.57,
-      yearLow: 81.43,
-      up: false,
-    },
-    MSFT: {
-      name: "Microsoft Corp.",
-      price: 337.42,
-      change: 3.67,
-      changePercent: 1.1,
-      marketCap: "2.51T",
-      peRatio: 32.8,
-      dividend: 2.72,
-      volume: "22.1M",
-      avgVolume: "26.4M",
-      high: 338.56,
-      low: 333.25,
-      open: 334.28,
-      prevClose: 333.75,
-      yearHigh: 349.67,
-      yearLow: 213.43,
-      up: true,
-    },
-    GOOGL: {
-      name: "Alphabet Inc.",
-      price: 138.21,
-      change: 0.96,
-      changePercent: 0.7,
-      marketCap: "1.74T",
-      peRatio: 26.5,
-      dividend: 0,
-      volume: "25.3M",
-      avgVolume: "31.8M",
-      high: 139.16,
-      low: 136.89,
-      open: 137.42,
-      prevClose: 137.25,
-      yearHigh: 142.38,
-      yearLow: 83.34,
-      up: true,
-    },
-    META: {
-      name: "Meta Platforms Inc.",
-      price: 312.95,
-      change: -3.81,
-      changePercent: -1.2,
-      marketCap: "802.4B",
-      peRatio: 27.1,
-      dividend: 0,
-      volume: "19.8M",
-      avgVolume: "23.5M",
-      high: 317.24,
-      low: 310.36,
-      open: 316.48,
-      prevClose: 316.76,
-      yearHigh: 326.20,
-      yearLow: 88.09,
-      up: false,
-    },
-    NVDA: {
-      name: "NVIDIA Corp.",
-      price: 457.30,
-      change: 14.18,
-      changePercent: 3.2,
-      marketCap: "1.13T",
-      peRatio: 107.2,
-      dividend: 0.16,
-      volume: "42.6M",
-      avgVolume: "49.3M",
-      high: 459.77,
-      low: 442.36,
-      open: 445.12,
-      prevClose: 443.12,
-      yearHigh: 502.66,
-      yearLow: 108.13,
-      up: true,
-    },
+export default function StockDetailsPage() {
+  const { symbol } = useParams(); // Get the stock symbol from the URL
+
+  // Retrieve data from sessionStorage
+  const storedData = sessionStorage.getItem("stocks-data");
+  const stocksData = storedData ? JSON.parse(storedData).data : [];
+  const stock = stocksData.find((s: any) => s.symbol === symbol);
+
+  // If stock data is not found, show a fallback or error message
+  if (!stock) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold">Stock not found</h1>
+        <p className="text-muted-foreground">The stock symbol "{symbol}" is not available.</p>
+      </div>
+    );
+  }
+
+  // Generate chart data dynamically
+  const generateChartData = (days: number, up: boolean) => {
+    const data = [];
+    let baseValue = parseFloat(stock.price); // Use the stock's current price as the base value
+
+    for (let i = 0; i < days; i++) {
+      const randomFactor = Math.random() * 5 - (up ? 1.5 : 3);
+      baseValue = baseValue + randomFactor;
+      data.push({
+        date: new Date(Date.now() - (days - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
+        value: baseValue,
+        volume: Math.floor(Math.random() * 10000000) + 5000000,
+      });
+    }
+
+    return data;
   };
 
-  // Default to AAPL if symbol not found
-  return stockInfo[symbol as keyof typeof stockInfo] || stockInfo.AAPL;
-};
+  // Mock news data (can be replaced with an API call)
+  const getNewsData = (symbol: string) => {
+    return [
+      {
+        id: 1,
+        title: `${symbol} Reports Strong Quarterly Earnings, Exceeding Expectations`,
+        source: "Financial Times",
+        time: "2 hours ago",
+        url: "#",
+      },
+      {
+        id: 2,
+        title: `Analysts Raise Price Target for ${symbol} Following Product Launch`,
+        source: "Bloomberg",
+        time: "5 hours ago",
+        url: "#",
+      },
+      {
+        id: 3,
+        title: `${symbol} Announces New Strategic Partnership to Expand Market Reach`,
+        source: "Reuters",
+        time: "Yesterday",
+        url: "#",
+      },
+      {
+        id: 4,
+        title: `Industry Outlook: How ${symbol} is Positioned for Future Growth`,
+        source: "Wall Street Journal",
+        time: "2 days ago",
+        url: "#",
+      },
+    ];
+  };
 
-// Mock chart data
-const generateChartData = (days: number, up: boolean) => {
-  const data = [];
-  let baseValue = 100;
-  
-  for (let i = 0; i < days; i++) {
-    const randomFactor = Math.random() * 5 - (up ? 1.5 : 3);
-    baseValue = baseValue + randomFactor;
-    data.push({
-      date: new Date(Date.now() - (days - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      value: baseValue,
-      volume: Math.floor(Math.random() * 10000000) + 5000000,
-    });
-  }
-  
-  return data;
-};
-
-// Mock news data
-const getNewsData = (symbol: string) => {
-  return [
-    {
-      id: 1,
-      title: `${symbol} Reports Strong Quarterly Earnings, Exceeding Expectations`,
-      source: "Financial Times",
-      time: "2 hours ago",
-      url: "#",
-    },
-    {
-      id: 2,
-      title: `Analysts Raise Price Target for ${symbol} Following Product Launch`,
-      source: "Bloomberg",
-      time: "5 hours ago",
-      url: "#",
-    },
-    {
-      id: 3,
-      title: `${symbol} Announces New Strategic Partnership to Expand Market Reach`,
-      source: "Reuters",
-      time: "Yesterday",
-      url: "#",
-    },
-    {
-      id: 4,
-      title: `Industry Outlook: How ${symbol} is Positioned for Future Growth`,
-      source: "Wall Street Journal",
-      time: "2 days ago",
-      url: "#",
-    },
-  ];
-};
-
-export default function StockDetailPage() {
-  const params = useParams();
-  const symbol = typeof params.symbol === "string" ? params.symbol : "AAPL";
-  
-  const stockData = getStockData(symbol);
-  const chartData = generateChartData(30, stockData.up);
-  const newsData = getNewsData(symbol);
+  // Chart data for different timeframes
+  const chartData = {
+    "1D": generateChartData(1, stock.up),
+    "5D": generateChartData(5, stock.up),
+    "1M": generateChartData(30, stock.up),
+    "6M": generateChartData(180, stock.up),
+    "1Y": generateChartData(365, stock.up),
+  };
 
   return (
-    <div className="flex flex-col">
-      <section className="w-full py-8 md:py-12 bg-gradient-to-b from-background to-muted/20">
-        <div className="container px-4 md:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="grid gap-6 lg:grid-cols-2"
-          >
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-3xl font-bold">{stockData.name}</h1>
-                <span className="text-sm font-medium text-muted-foreground">
-                  {symbol}
-                </span>
-              </div>
-              <div className="mt-2 flex items-center space-x-2">
-                <span className="text-3xl font-bold">${stockData.price.toFixed(2)}</span>
-                <span
-                  className={`flex items-center text-lg ${
-                    stockData.up ? "text-green-500" : "text-red-500"
-                  }`}
-                >
-                  {stockData.up ? (
-                    <TrendingUp className="mr-1 h-5 w-5" />
-                  ) : (
-                    <TrendingDown className="mr-1 h-5 w-5" />
-                  )}
-                  {stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Last updated: {new Date().toLocaleString()}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Market Cap</span>
-                  </div>
-                  <p className="mt-1 text-lg font-bold">{stockData.marketCap}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <BarChart2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">P/E Ratio</span>
-                  </div>
-                  <p className="mt-1 text-lg font-bold">{stockData.peRatio}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">52W High</span>
-                  </div>
-                  <p className="mt-1 text-lg font-bold">${stockData.yearHigh}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">52W Low</span>
-                  </div>
-                  <p className="mt-1 text-lg font-bold">${stockData.yearLow}</p>
-                </CardContent>
-              </Card>
-            </div>
-          </motion.div>
+    <div className="p-6">
+      {/* Stock Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{stock.name}</h1>
+          <p className="text-muted-foreground">{stock.symbol}</p>
         </div>
-      </section>
+        <div className="text-right">
+          <h2 className="text-3xl font-bold">${stock.price}</h2>
+          <p className={`flex items-center ${stock.up ? "text-green-500" : "text-red-500"}`}>
+            {stock.up ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
+            {stock.change}
+          </p>
+        </div>
+      </div>
 
-      <section className="w-full py-8 md:py-12 bg-background">
-        <div className="container px-4 md:px-6">
-          <Tabs defaultValue="chart" className="w-full">
-            <TabsList className="mb-6 w-full justify-start">
-              <TabsTrigger value="chart">Chart</TabsTrigger>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="news">News</TabsTrigger>
-            </TabsList>
-            <TabsContent value="chart" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Price History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[400px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={chartData}
-                        margin={{
-                          top: 10,
-                          right: 30,
-                          left: 0,
-                          bottom: 0,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Area
-                          type="monotone"
-                          dataKey="value"
-                          stroke={stockData.up ? "hsl(var(--chart-1))" : "hsl(var(--chart-3))"}
-                          fill={stockData.up ? "hsl(var(--chart-1) / 0.2)" : "hsl(var(--chart-3) / 0.2)"}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Volume</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar
-                          dataKey="volume"
-                          fill="hsl(var(--chart-2))"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="overview" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Company Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-medium">Price Information</h3>
-                        <div className="mt-2 grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Open</p>
-                            <p className="font-medium">${stockData.open}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Previous Close</p>
-                            <p className="font-medium">${stockData.prevClose}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Day High</p>
-                            <p className="font-medium">${stockData.high}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Day Low</p>
-                            <p className="font-medium">${stockData.low}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-medium">Trading Information</h3>
-                        <div className="mt-2 grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Volume</p>
-                            <p className="font-medium">{stockData.volume}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Avg. Volume</p>
-                            <p className="font-medium">{stockData.avgVolume}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-medium">Fundamentals</h3>
-                        <div className="mt-2 grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Market Cap</p>
-                            <p className="font-medium">{stockData.marketCap}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">P/E Ratio</p>
-                            <p className="font-medium">{stockData.peRatio}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Dividend</p>
-                            <p className="font-medium">
-                              {stockData.dividend ? `$${stockData.dividend}` : "N/A"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">52W Range</p>
-                            <p className="font-medium">
-                              ${stockData.yearLow} - ${stockData.yearHigh}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-medium">About {stockData.name}</h3>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {stockData.name} is a leading company in its industry, focused on innovation and growth.
-                          The company has a strong market position and continues to expand its product offerings.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="news" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Latest News</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {newsData.map((news) => (
-                      <motion.div
-                        key={news.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="rounded-lg border p-4 hover:bg-muted/50"
-                      >
-                        <a href={news.url} className="block">
-                          <h3 className="font-medium hover:underline">{news.title}</h3>
-                          <div className="mt-2 flex items-center text-sm text-muted-foreground">
-                            <Globe className="mr-1 h-3 w-3" />
-                            <span>{news.source}</span>
-                            <span className="mx-2">•</span>
-                            <span>{news.time}</span>
-                          </div>
-                        </a>
-                      </motion.div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+      {/* Tabs for Charts */}
+      <Tabs defaultValue="1D" className="mt-6">
+        <TabsList>
+          <TabsTrigger value="1D">1D</TabsTrigger>
+          <TabsTrigger value="5D">5D</TabsTrigger>
+          <TabsTrigger value="1M">1M</TabsTrigger>
+          <TabsTrigger value="6M">6M</TabsTrigger>
+          <TabsTrigger value="1Y">1Y</TabsTrigger>
+        </TabsList>
+        <TabsContent value="1D">
+          <Chart data={chartData["1D"]} />
+        </TabsContent>
+        <TabsContent value="5D">
+          <Chart data={chartData["5D"]} />
+        </TabsContent>
+        <TabsContent value="1M">
+          <Chart data={chartData["1M"]} />
+        </TabsContent>
+        <TabsContent value="6M">
+          <Chart data={chartData["6M"]} />
+        </TabsContent>
+        <TabsContent value="1Y">
+          <Chart data={chartData["1Y"]} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Stock Details */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Market Cap</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">${stock.marketCap}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>P/E Ratio</CardTitle>
+            <BarChart2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{stock.peRatio}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Dividend Yield</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{stock.dividend}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* News Section */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold mb-4">Latest News</h2>
+        <div className="space-y-4">
+          {getNewsData(symbol as string).map((news) => (
+            <Card key={news.id}>
+              <CardContent className="p-4">
+                <h3 className="font-semibold">{news.title}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {news.source} · {news.time}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 }
+
+// Chart component
+const Chart = ({ data }: { data: any[] }) => {
+  return (
+    <ResponsiveContainer width="100%" height={400}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" />
+        <YAxis />
+        <Tooltip />
+        <Line type="monotone" dataKey="value" stroke="#8884d8" />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+};

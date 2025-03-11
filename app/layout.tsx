@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 import Chatbot from '@/components/chatbot';
+import { UserPreferencesProvider } from '@/contexts/userPreferenceContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,7 +24,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers> {/* Use the Providers component */}
+      <Providers>
+        <UserPreferencesProvider>
           <div className="flex flex-col min-h-screen">
             <Navbar />
             <main className="flex-grow">{children}</main>
@@ -31,7 +33,8 @@ export default function RootLayout({
             <Footer />
           </div>
           <Toaster />
-        </Providers>
+        </UserPreferencesProvider>
+      </Providers>
       </body>
     </html>
   );

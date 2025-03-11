@@ -26,7 +26,7 @@ export function ThemeToggle() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
+        {/* <DropdownMenuItem onClick={() => setTheme("light")}>
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -34,7 +34,7 @@ export function ThemeToggle() {
           >
             Light
           </motion.div>
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
         <DropdownMenuItem onClick={() => setTheme("dark")}>
           <motion.div
             whileHover={{ scale: 1.05 }}
@@ -44,7 +44,7 @@ export function ThemeToggle() {
             Dark
           </motion.div>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
+        {/* <DropdownMenuItem onClick={() => setTheme("system")}>
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -52,7 +52,7 @@ export function ThemeToggle() {
           >
             System
           </motion.div>
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
       </DropdownMenuContent>
     </DropdownMenu>
   );
