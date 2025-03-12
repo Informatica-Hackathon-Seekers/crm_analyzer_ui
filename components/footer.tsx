@@ -89,7 +89,7 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Copyright Section //////////*/}
+        {/* Copyright Section*/}
         <div className="mt-8 border-t pt-6">
           <p className="text-center text-xs text-muted-foreground">
             © {new Date().getFullYear()} Trendlytics. All rights reserved.
